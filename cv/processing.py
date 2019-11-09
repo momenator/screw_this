@@ -7,6 +7,14 @@ import cv2
 
 
 # debugging
+def captureImage():
+    webcam = cv2.VideoCapture(1)
+    check, frame = webcam.read()
+    cv2.imshow("Capturing", frame)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    cv2.imwrite(filename='latest_image.jpg', img=frame)
+
 def show_n_wait(title_name, image_input):
 	cv2.imshow(title_name, image_input)
 	cv2.waitKey(0)
@@ -159,3 +167,5 @@ def get_measurements(image_path, real_width, is_display=False):
     
     # return all the measurements here!
     return measurements
+
+captureImage()

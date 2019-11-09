@@ -13,7 +13,8 @@ def captureImage():
     cv2.imshow("Capturing", frame)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
-    cv2.imwrite(filename='latest_image.jpg', img=frame)
+    cv2.imwrite(filename='./images/latest_image.jpg', img=frame)
+
 
 def show_n_wait(title_name, image_input):
 	cv2.imshow(title_name, image_input)
@@ -52,14 +53,36 @@ def remove_shadows(img):
     return norm_img
 
 
+# img should be RGB
+def get_avg_pixel_val(img, pts):
+    pts = np.where(pts<0, 0, pts).astype("int")
+    mask = np.zeros((img.shape[0], img.shape[1]))
+
+    cv2.fillConvexPoly(mask, pts, 1)
+    mask = mask.astype(np.bool)
+
+    out = np.zeros_like(img)
+    out[mask] = img[mask]
+    return np.sum(out) / np.count_nonzero(out)
+
+
+def classify_img(grey_val):
+    print(grey_val)
+    if (grey_val < 95):
+        return 0
+    elif (grey_val < 155):
+        return 1
+    return -1
+
+
 def get_measurements(image_path, real_width, is_display=False):
     image = cv2.imread(image_path)
 
     image = resize_w_aspect_ratio(image, 800)
 
     # remove shadows
-    image = remove_shadows(image)
-    show_n_wait("shadows", image)
+    # image = remove_shadows(image)
+    # show_n_wait("shadows", image)
 
     # Resize image
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -89,7 +112,7 @@ def get_measurements(image_path, real_width, is_display=False):
     # loop over the contours individually
     for c in cnts:
         # if the contour is not sufficiently large, ignore it
-        if cv2.contourArea(c) < 250:
+        if cv2.contourArea(c) < 100:
             continue
 
         # compute the rotated bounding box of the contour
@@ -150,6 +173,11 @@ def get_measurements(image_path, real_width, is_display=False):
         dimA = dA / pixelsPerMetric
         dimB = dB / pixelsPerMetric
 
+        is_anomaly = False
+        if dimA * dimB > 1500:
+            is_anomaly = True
+            continue
+
         # draw the object sizes on the image
         cv2.putText(orig, "{:.3f}mm".format(dimA),
             (int(tltrX - 15), int(tltrY - 10)), cv2.FONT_HERSHEY_SIMPLEX,
@@ -163,9 +191,9 @@ def get_measurements(image_path, real_width, is_display=False):
             cv2.imshow("Image", orig)
             cv2.waitKey(0)
         
-        measurements.append((dimA, dimB))
+        avg = get_avg_pixel_val(gray, np.array([tl, tr, br, bl]))
+        img_type = classify_img(avg)
+        measurements.append((img_type, dimA, dimB))
     
     # return all the measurements here!
     return measurements
-
-captureImage()

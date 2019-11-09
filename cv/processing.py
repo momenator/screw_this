@@ -4,6 +4,7 @@ from imutils import contours
 import numpy as np
 import imutils
 import cv2
+import time
 
 
 # debugging
@@ -23,6 +24,11 @@ def show_n_wait(title_name, image_input):
 def midpoint(ptA, ptB):
 	return ((ptA[0] + ptB[0]) * 0.5, (ptA[1] + ptB[1]) * 0.5)
 
+def createMask(original_image, outer_rect):
+    mask = np.zeros(original_image.shape[:2], dtype=np.uint8)
+    print(outer_rect)
+    cv2.rectangle(mask, (outer_rect[0]), (outer_rect[3]), 255, -1)
+    print(cv2.mean(original_image, mask))
 
 def resize_w_aspect_ratio(image, width=None, height=None, inter=cv2.INTER_AREA):
     dim = None
@@ -54,6 +60,8 @@ def remove_shadows(img):
 
 def get_measurements(image_path, real_width, is_display=False):
     image = cv2.imread(image_path)
+
+    print(cv2.mean(image))
 
     image = resize_w_aspect_ratio(image, 800)
 
@@ -92,6 +100,9 @@ def get_measurements(image_path, real_width, is_display=False):
         if cv2.contourArea(c) < 250:
             continue
 
+        if cv2.contourArea(c) > 1000:
+            continue
+
         # compute the rotated bounding box of the contour
         orig = image.copy()
         box = cv2.minAreaRect(c)
@@ -100,6 +111,7 @@ def get_measurements(image_path, real_width, is_display=False):
         # what if they do?
         box = cv2.cv.BoxPoints(box) if imutils.is_cv2() else cv2.boxPoints(box)
         box = np.array(box, dtype="int")
+        print("box", createMask(orig,box))
 
         # order the points in the contour such that they appear
         # in top-left, top-right, bottom-right, and bottom-left
@@ -125,16 +137,16 @@ def get_measurements(image_path, real_width, is_display=False):
         (trbrX, trbrY) = midpoint(tr, br)
 
         # draw the midpoints on the image
-        cv2.circle(orig, (int(tltrX), int(tltrY)), 5, (255, 0, 0), -1)
-        cv2.circle(orig, (int(blbrX), int(blbrY)), 5, (255, 0, 0), -1)
-        cv2.circle(orig, (int(tlblX), int(tlblY)), 5, (255, 0, 0), -1)
-        cv2.circle(orig, (int(trbrX), int(trbrY)), 5, (255, 0, 0), -1)
+        # cv2.circle(orig, (int(tltrX), int(tltrY)), 5, (255, 0, 0), -1)
+        # cv2.circle(orig, (int(blbrX), int(blbrY)), 5, (255, 0, 0), -1)
+        # cv2.circle(orig, (int(tlblX), int(tlblY)), 5, (255, 0, 0), -1)
+        # cv2.circle(orig, (int(trbrX), int(trbrY)), 5, (255, 0, 0), -1)
 
         # draw lines between the midpoints
-        cv2.line(orig, (int(tltrX), int(tltrY)), (int(blbrX), int(blbrY)),
-            (255, 0, 255), 2)
-        cv2.line(orig, (int(tlblX), int(tlblY)), (int(trbrX), int(trbrY)),
-            (255, 0, 255), 2)
+        # cv2.line(orig, (int(tltrX), int(tltrY)), (int(blbrX), int(blbrY)),
+        #     (255, 0, 255), 2)
+        # cv2.line(orig, (int(tlblX), int(tlblY)), (int(trbrX), int(trbrY)),
+        #     (255, 0, 255), 2)
 
         # compute the Euclidean distance between the midpoints
         dA = dist.euclidean((tltrX, tltrY), (blbrX, blbrY))
@@ -164,8 +176,13 @@ def get_measurements(image_path, real_width, is_display=False):
             cv2.waitKey(0)
         
         measurements.append((dimA, dimB))
+        # print(dimA/dimB)
     
     # return all the measurements here!
     return measurements
 
-captureImage()
+# gameOn = True
+
+# while gameOn == True:
+print(get_measurements("images/coin.jpg", 2.425, is_display=True))
+    # time.sleep(3)

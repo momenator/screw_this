@@ -31,16 +31,30 @@ def resize_w_aspect_ratio(image, width=None, height=None, inter=cv2.INTER_AREA):
 
     return cv2.resize(image, dim, interpolation=inter)
 
-def remove_shadows(image):
-    pass
+
+def remove_shadows(img):
+    # dilate image
+    dilated_img = cv2.dilate(img, np.ones((7,7), np.uint8)) 
+    bg_img = cv2.medianBlur(dilated_img, 21)
+    diff_img = 255 - cv2.absdiff(img, bg_img)
+    norm_img = diff_img.copy() # Needed for 3.x compatibility
+    norm_img = cv2.normalize(diff_img, norm_img, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
+    _, thr_img = cv2.threshold(norm_img, 255, 0, cv2.THRESH_TRUNC)
+    norm_img = cv2.normalize(thr_img, thr_img, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
+    return norm_img
 
 
 def get_measurements(image_path, real_width, is_display=False):
     image = cv2.imread(image_path)
 
+    image = resize_w_aspect_ratio(image, 800)
+
+    # remove shadows
+    image = remove_shadows(image)
+    show_n_wait("shadows", image)
+
     # Resize image
-    image_resized = resize_w_aspect_ratio(image, 800)
-    gray = cv2.cvtColor(image_resized, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # reduce noise by blurring!
     gray = cv2.GaussianBlur(gray, (7, 7), 0)
 
@@ -71,7 +85,7 @@ def get_measurements(image_path, real_width, is_display=False):
             continue
 
         # compute the rotated bounding box of the contour
-        orig = image_resized.copy()
+        orig = image.copy()
         box = cv2.minAreaRect(c)
 
         # check if cv2 contains overlap
@@ -131,10 +145,10 @@ def get_measurements(image_path, real_width, is_display=False):
         # draw the object sizes on the image
         cv2.putText(orig, "{:.3f}mm".format(dimA),
             (int(tltrX - 15), int(tltrY - 10)), cv2.FONT_HERSHEY_SIMPLEX,
-            0.65, (255, 255, 255), 2)
+            0.65, (0, 0, 0), 2)
         cv2.putText(orig, "{:.3f}mm".format(dimB),
             (int(trbrX + 10), int(trbrY)), cv2.FONT_HERSHEY_SIMPLEX,
-            0.65, (255, 255, 255), 2)
+            0.65, (0, 0, 0), 2)
 
         if is_display:
             # show the output image

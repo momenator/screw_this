@@ -10,5 +10,5 @@ ap.add_argument("-w", "--width", type=float, required=True,
 	help="width of the left-most object in the image (in inches)")
 args = vars(ap.parse_args())
 
-measurements = processing.get_measurements(args["image"], args["width"])
+measurements = processing.get_measurements(args["image"], args["width"], is_display=True)
 print(measurements)

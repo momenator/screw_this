@@ -6,6 +6,7 @@ import imutils
 import cv2
 import time
 
+presentationMode = True
 
 # debugging
 def captureImage():
@@ -21,6 +22,9 @@ def show_n_wait(title_name, image_input):
 	cv2.imshow(title_name, image_input)
 	cv2.waitKey(0)
 
+def present(name, imageA):
+    if(presentationMode==True):
+        cv2.imwrite(filename='./images/present/' + name + '.jpg', img=imageA)
 
 def midpoint(ptA, ptB):
 	return ((ptA[0] + ptB[0]) * 0.5, (ptA[1] + ptB[1]) * 0.5)
@@ -95,11 +99,13 @@ def check_box_exist(box, boxes):
 
 def get_measurements(image_path, real_width, is_display=False):
     image = cv2.imread(image_path)
+    present('1', image)
 
     image = resize_w_aspect_ratio(image, 800)
 
     # Resize image
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    present('2', gray)
 
     # remove shadows
     # image = remove_shadows(gray)
@@ -107,6 +113,7 @@ def get_measurements(image_path, real_width, is_display=False):
 
     # reduce noise by blurring!
     gray = cv2.GaussianBlur(image, (7, 7), 0)
+    present('3', gray)
     # show_n_wait("gaussian", gray)
 
     # use canny edge detection to threshold the image
@@ -114,8 +121,11 @@ def get_measurements(image_path, real_width, is_display=False):
     # close gaps in between object edges
     # METHOD 1: canny edge detection uses adaptive threshold by default
     edges = cv2.Canny(gray, 50, 100)
+    present('4', edges)
     edges = cv2.dilate(edges, None, iterations=1)
+    present('5', edges)
     edges = cv2.erode(edges, None, iterations=1)
+    present('6', edges)
 
     # find contours in the edge map
     cnts = cv2.findContours(edges.copy(), cv2.RETR_TREE,
@@ -216,6 +226,8 @@ def get_measurements(image_path, real_width, is_display=False):
             (int(trbrX + 10), int(trbrY)), cv2.FONT_HERSHEY_SIMPLEX,
             0.65, (0, 0, 0), 2)
 
+        present('7', orig)
+
         if is_display:
             # show the output image
             cv2.imshow("Image", orig)
@@ -223,7 +235,7 @@ def get_measurements(image_path, real_width, is_display=False):
         
         avg = get_avg_pixel_val(gray, np.array([tl, tr, br, bl]))
         img_type = classify_img(avg)
-        measurements.append((img_type, dimA, dimB))
+        measurements.append((img_type, round(dimA,2), round(dimB,2)))
 
     if is_display:
         cv2.drawContours(orig, boxes, -1, (0, 255, 0), 2)    

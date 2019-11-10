@@ -8,9 +8,7 @@ import PySimpleGUI as sg
 
 PERIOD = 1
 PIXEL_WIDTH = 24.25
-cap = cv2.VideoCapture(0)
-mea = []
-window = sg.Window('Window Title', mea)
+cap = cv2.VideoCapture(1)
 
 # Take a picture every second
 while True:
@@ -27,11 +25,6 @@ while True:
     # get measurements here!
     mea = get_measurements('./images/coin.jpg', PIXEL_WIDTH)
     
-    event, values = window.Read()
-
-    if event in (None, 'Cancel'):
-        break
-
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 

@@ -51,14 +51,16 @@ def resize_w_aspect_ratio(image, width=None, height=None, inter=cv2.INTER_AREA):
 
 def remove_shadows(img):
     # dilate image
-    dilated_img = cv2.dilate(img, np.ones((7,7), np.uint8)) 
-    bg_img = cv2.medianBlur(dilated_img, 21)
-    diff_img = 255 - cv2.absdiff(img, bg_img)
-    norm_img = diff_img.copy() # Needed for 3.x compatibility
-    norm_img = cv2.normalize(diff_img, norm_img, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
-    _, thr_img = cv2.threshold(norm_img, 255, 0, cv2.THRESH_TRUNC)
-    norm_img = cv2.normalize(thr_img, thr_img, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
-    return norm_img
+    # dilated_img = cv2.dilate(img, np.ones((7,7), np.uint8)) 
+    # bg_img = cv2.medianBlur(dilated_img, 21)
+    # diff_img = 255 - cv2.absdiff(img, bg_img)
+    # norm_img = diff_img.copy() # Needed for 3.x compatibility
+    # norm_img = cv2.normalize(diff_img, norm_img, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
+    # _, thr_img = cv2.threshold(norm_img, 255, 0, cv2.THRESH_TRUNC)
+    # norm_img = cv2.normalize(thr_img, thr_img, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8UC1)
+    shadow_threshold = 30
+    return cv2.threshold(img, shadow_threshold, 255, cv2.THRESH_TOZERO)
+    # return norm_img
 
 
 # img should be RGB
@@ -82,19 +84,30 @@ def classify_img(grey_val):
     return -1
 
 
+def check_box_exist(box, boxes):
+    box_exists = False
+    for cur_box in boxes:
+        if np.abs(np.sum(cur_box - box)) < 30:
+            box_exists = True
+            break
+    return box_exists
+
+
 def get_measurements(image_path, real_width, is_display=False):
     image = cv2.imread(image_path)
 
     image = resize_w_aspect_ratio(image, 800)
 
-    # remove shadows
-    # image = remove_shadows(image)
-    # show_n_wait("shadows", image)
-
     # Resize image
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # remove shadows
+    # image = remove_shadows(gray)
+    # show_n_wait("shadows", gray)
+
     # reduce noise by blurring!
-    gray = cv2.GaussianBlur(gray, (7, 7), 0)
+    gray = cv2.GaussianBlur(image, (7, 7), 0)
+    # show_n_wait("gaussian", gray)
 
     # use canny edge detection to threshold the image
     # perform edge detection, then perform a dilation + erosion to
@@ -105,8 +118,8 @@ def get_measurements(image_path, real_width, is_display=False):
     edges = cv2.erode(edges, None, iterations=1)
 
     # find contours in the edge map
-    cnts = cv2.findContours(edges.copy(), cv2.RETR_EXTERNAL,
-        cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cv2.findContours(edges.copy(), cv2.RETR_TREE,
+        cv2.CHAIN_APPROX_NONE)
     cnts = imutils.grab_contours(cnts)
 
     # sort the contours from left-to-right and initialize the
@@ -115,6 +128,7 @@ def get_measurements(image_path, real_width, is_display=False):
     pixelsPerMetric = None
 
     measurements = []
+    boxes = []
 
     # loop over the contours individually
     for c in cnts:
@@ -137,6 +151,7 @@ def get_measurements(image_path, real_width, is_display=False):
         # order, then draw the outline of the rotated bounding
         # box
         box = perspective.order_points(box)
+
         cv2.drawContours(orig, [box.astype("int")], -1, (0, 255, 0), 2)
 
         # loop over the original points and draw them
@@ -182,10 +197,17 @@ def get_measurements(image_path, real_width, is_display=False):
         dimB = dB / pixelsPerMetric
 
         is_anomaly = False
-        if dimA * dimB > 1500:
+        if dimA * dimB > 1500 or dimA * dimB < 200:
             is_anomaly = True
             continue
-
+        
+        # check box difs
+        box_exists = check_box_exist(box, boxes)
+        if box_exists:
+            continue
+    
+        boxes.append(box.astype("int"))
+        
         # draw the object sizes on the image
         cv2.putText(orig, "{:.3f}mm".format(dimA),
             (int(tltrX - 15), int(tltrY - 10)), cv2.FONT_HERSHEY_SIMPLEX,
@@ -202,6 +224,12 @@ def get_measurements(image_path, real_width, is_display=False):
         avg = get_avg_pixel_val(gray, np.array([tl, tr, br, bl]))
         img_type = classify_img(avg)
         measurements.append((img_type, dimA, dimB))
+
+    if is_display:
+        cv2.drawContours(orig, boxes, -1, (0, 255, 0), 2)    
+        # show the output image
+        cv2.imshow("Image", orig)
+        cv2.waitKey(0)
 
     # return all the measurements here!
     return measurements

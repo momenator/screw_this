@@ -25,11 +25,13 @@ def show_n_wait(title_name, image_input):
 def midpoint(ptA, ptB):
 	return ((ptA[0] + ptB[0]) * 0.5, (ptA[1] + ptB[1]) * 0.5)
 
+
 def createMask(original_image, outer_rect):
     mask = np.zeros(original_image.shape[:2], dtype=np.uint8)
     print(outer_rect)
     cv2.rectangle(mask, (outer_rect[0]), (outer_rect[3]), 255, -1)
     print(cv2.mean(original_image, mask))
+
 
 def resize_w_aspect_ratio(image, width=None, height=None, inter=cv2.INTER_AREA):
     dim = None
@@ -73,7 +75,6 @@ def get_avg_pixel_val(img, pts):
 
 
 def classify_img(grey_val):
-    print(grey_val)
     if (grey_val < 95):
         return 0
     elif (grey_val < 155):
@@ -83,8 +84,6 @@ def classify_img(grey_val):
 
 def get_measurements(image_path, real_width, is_display=False):
     image = cv2.imread(image_path)
-
-    print(cv2.mean(image))
 
     image = resize_w_aspect_ratio(image, 800)
 
